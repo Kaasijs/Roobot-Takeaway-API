@@ -1,0 +1,32 @@
+{
+    "takeaway":{
+        "url":"https://www.thuisbezorgd.nl/"
+    },
+    "restaurant":{
+        "name":"HFC",
+        "cart":[
+            {
+                "name":"Spicy wings, 4 pieces",
+                "options":[
+                ]
+            },
+            {
+                "name":"Spicy wings, 4 pieces",
+                "options":[
+                ]
+            },
+            {
+                "name":"Spicy wings, 4 pieces",
+                "options":[
+                ]
+            }
+        ]
+    },
+    "user":{
+        "name":"Roobot",
+        "adress":"Stadhuisstraat 18, 1315 MA Almere",
+        "phonenumber":"+31655555555",
+        "email":"roobot@kaasijs.com",
+        "password":"RoobotFoodAp67$"
+    }
+}

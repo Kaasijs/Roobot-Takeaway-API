@@ -1,0 +1,25 @@
+{
+    "takeaway":{
+        "url":"https://www.thuisbezorgd.nl/"
+    },
+    "restaurant":{
+        "name":"KFC",
+        "cart":[
+            {
+                "name":"Twister meal",
+                "options":[
+                    "Geen Extra",
+                    "Friet L",
+                    "Pepsi Zero Sugar L - Standaard Beker"
+                ]
+            }
+        ]
+    },
+    "user":{
+        "name":"Roobot",
+        "adress":"Stadhuisstraat 18, 1315 MA Almere",
+        "phonenumber":"+31655555555",
+        "email":"roobot@kaasijs.com",
+        "password":"RoobotFoodAp67$"
+    }
+}
