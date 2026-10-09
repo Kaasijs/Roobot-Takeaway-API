@@ -4,17 +4,8 @@ import time
 import json
 from email.header import decode_header
 
-with open('data.json', 'r') as f:
-    data = json.load(f)
-
-IMAP_HOST = "mail.kaasijs.com"
-IMAP_PORT = 993
-
-BRIDGE_USERNAME = data["imap"]["email"]
-BRIDGE_PASSWORD = data["imap"]["password"]
-if BRIDGE_PASSWORD == "":
-    BRIDGE_PASSWORD = "RoobotFoodAp67$"
-
+# with open('order.json', 'r') as f:
+#     data = json.load(f)
 
 def decode_text(value):
     if not value:
@@ -86,6 +77,8 @@ def get_email_body(msg):
 
 
 def wait_for_email(
+    username,
+    password,
     sender=None,
     subject=None,
     timeout=300,
@@ -93,6 +86,12 @@ def wait_for_email(
     check_every=8
 ):
 
+    IMAP_HOST = "mail.kaasijs.com"
+    IMAP_PORT = 993
+
+    BRIDGE_USERNAME = username
+    BRIDGE_PASSWORD = password
+    
     mail = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
 
     mail.login(

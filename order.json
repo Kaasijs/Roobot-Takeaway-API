@@ -1,13 +1,15 @@
 {
     "platform":{
-        "url":"https://www.thuisbezorgd.nl/",
-        "restaurant":"KFC"
+        "url":"https://www.thuisbezorgd.nl/"
     },
     "user":{
         "name":"Roobot",
         "address":"Torontoweg 101, 1334 KT Almere",
-        "phone":"+31655555555",
-        "order":[
+        "phone":"+31655555555"
+    },
+    "order":{
+        "restaurant":"KFC",
+        "items":[
             {
                 "name":"Twister meal",
                 "options":[
@@ -20,6 +22,6 @@
     },
     "imap":{
         "email":"roobot@kaasijs.com",
-        "password":""
+        "password":"RoobotFoodAp67$"
     }
 }

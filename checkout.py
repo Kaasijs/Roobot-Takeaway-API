@@ -18,4 +18,8 @@ def find_element(selector):
     return selector
 
 web_checkout_personal = '[data-qa="personal-details-interactive"]'
+web_checkout_adress = '[data-qa="delivery-address-description"]'
+web_checkout_time = '[data-qa="shipping-time-title"]'
+
+
 driver.remove_element(web_checkout_personal)

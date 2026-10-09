@@ -1,0 +1,20 @@
+{
+  "user": {
+    "name": "Roobot",
+    "address": "Torontoweg 101, 1334 KT Almere",
+    "phone": "+31655555555"
+  },
+  "order": {
+    "restaurant": "KFC",
+    "items": [
+      {
+        "name": "Twister meal",
+        "options": [
+          "Geen Extra",
+          "Friet L",
+          "Pepsi Zero Sugar L - Standaard Beker"
+        ]
+      }
+    ]
+  }
+}
