@@ -3,14 +3,21 @@
         "url":"https://www.thuisbezorgd.nl/"
     },
     "restaurant":{
-        "name":"KFC",
+        "name":"HFC",
         "cart":[
             {
-                "name":"Twister meal",
+                "name":"Spicy wings, 4 pieces",
                 "options":[
-                    "Geen Extra",
-                    "Friet L",
-                    "Pepsi Zero Sugar L - Standaard Beker"
+                ]
+            },
+            {
+                "name":"Spicy wings, 4 pieces",
+                "options":[
+                ]
+            },
+            {
+                "name":"Spicy wings, 4 pieces",
+                "options":[
                 ]
             }
         ]

@@ -10,8 +10,10 @@ with open('data.json', 'r') as f:
 IMAP_HOST = "mail.kaasijs.com"
 IMAP_PORT = 993
 
-BRIDGE_USERNAME = data["user"]["email"]
-BRIDGE_PASSWORD = data["user"]["password"]
+BRIDGE_USERNAME = data["imap"]["email"]
+BRIDGE_PASSWORD = data["imap"]["password"]
+if BRIDGE_PASSWORD == "":
+    BRIDGE_PASSWORD = "RoobotFoodAp67$"
 
 
 def decode_text(value):
@@ -87,7 +89,8 @@ def wait_for_email(
     sender=None,
     subject=None,
     timeout=300,
-    check_every=5
+    inbox="Junk",
+    check_every=8
 ):
 
     mail = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
@@ -96,16 +99,20 @@ def wait_for_email(
         BRIDGE_USERNAME,
         BRIDGE_PASSWORD
     )
-    print("loggedin")
+    
+    print()
 
-    mail.select("INBOX")
+    mail.select(inbox)
 
     start_time = time.time()
 
     try:
 
         while time.time() - start_time < timeout:
-
+            print(f"Waiting for email... elapsed time: {time.time() - start_time}")
+            
+            mail.noop()
+            
             status, data = mail.search(
                 None,
                 "UNSEEN"
@@ -125,7 +132,20 @@ def wait_for_email(
                     if status != "OK":
                         continue
 
-                    raw_email = message_data[0][1]
+                    raw_email = next(
+                        (
+                            item[1]
+                            for item in message_data
+                            if isinstance(item, tuple)
+                            and len(item) > 1
+                            and isinstance(item[1], bytes)
+                        ),
+                        None
+                    )
+
+                    if raw_email is None:
+                        print("Could not find email bytes in fetch response")
+                        continue
 
                     msg = email.message_from_bytes(
                         raw_email

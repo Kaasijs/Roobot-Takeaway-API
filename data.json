@@ -1,32 +1,25 @@
 {
-    "takeaway":{
-        "url":"https://www.thuisbezorgd.nl/"
+    "platform":{
+        "url":"https://www.thuisbezorgd.nl/",
+        "restaurant":"KFC"
     },
-    "restaurant":{
-        "name":"HFC",
-        "cart":[
+    "user":{
+        "name":"Roobot",
+        "address":"Torontoweg 101, 1334 KT Almere",
+        "phone":"+31655555555",
+        "order":[
             {
-                "name":"Spicy wings, 4 pieces",
+                "name":"Twister meal",
                 "options":[
-                ]
-            },
-            {
-                "name":"Spicy wings, 4 pieces",
-                "options":[
-                ]
-            },
-            {
-                "name":"Spicy wings, 4 pieces",
-                "options":[
+                    "Geen Extra",
+                    "Friet L",
+                    "Pepsi Zero Sugar L - Standaard Beker"
                 ]
             }
         ]
     },
-    "user":{
-        "name":"Roobot",
-        "adress":"Stadhuisstraat 18, 1315 MA Almere",
-        "phonenumber":"+31655555555",
+    "imap":{
         "email":"roobot@kaasijs.com",
-        "password":"RoobotFoodAp67$"
+        "password":""
     }
 }
