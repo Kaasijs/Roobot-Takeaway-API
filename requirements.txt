@@ -1,4 +1,4 @@
-seleniumbase
-selenium
 fastapi
 uvicorn[standard]
+seleniumbase
+selenium

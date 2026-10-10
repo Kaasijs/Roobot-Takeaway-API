@@ -19,11 +19,11 @@ class User(BaseModel):
     phone:str = Field(examples=["+31655555555"])
 
 class Item(BaseModel):
-    name: str = Field(examples=["Twister meal","Margherita pizza"])
-    options: list[str] = Field(examples=[["Geen Extra","Friet L","Pepsi Zero Sugar L - Standaard Beker"],["26 cm"]])
+    name: str = Field(examples=["Margherita pizza","Twister meal"])
+    options: list[str] = Field(examples=[["26 cm"],["Geen Extra","Friet L","Pepsi Zero Sugar L - Standaard Beker"]])
 
 class Order(BaseModel):
-    restaurant:str = Field(examples=["KFC","Pizza Xpress"])
+    restaurant:str = Field(examples=["Pizza Xpress","KFC"])
     items:list[Item]
 
 class Payload(BaseModel):

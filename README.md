@@ -2,4 +2,8 @@
 operatie nuggies
 
 # Run
-uvicorn app:app --reload
+uvicorn main:app --reload
+
+# Build
+cd SeleniumBase
+docker build -t seleniumbase-local .
