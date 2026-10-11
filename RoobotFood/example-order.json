@@ -1,9 +1,6 @@
 {
-    "platform":{
-        "url":"https://www.thuisbezorgd.nl/"
-    },
     "user":{
-        "name":"Roobot",
+        "name":"Name",
         "address":"Torontoweg 101, 1334 KT Almere",
         "phone":"+31655555555"
     },
@@ -19,9 +16,5 @@
                 ]
             }
         ]
-    },
-    "imap":{
-        "email":"roobot@kaasijs.com",
-        "password":"RoobotFoodAp67$"
     }
 }

@@ -4,9 +4,6 @@ import time
 import json
 from email.header import decode_header
 
-# with open('order.json', 'r') as f:
-#     data = json.load(f)
-
 def decode_text(value):
     if not value:
         return ""
