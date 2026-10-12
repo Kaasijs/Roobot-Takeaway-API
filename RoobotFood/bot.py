@@ -10,7 +10,11 @@ import pprint
 with open('config.json', 'r') as f:
     config = json.load(f)
 
-def order(order):
+def order(order_id):
+    # load order
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
+    
     with SB(uc=True) as sb:
         data = config
         data["order"] = order["order"]
@@ -199,8 +203,12 @@ def order(order):
             if "https://pay" in url:
                 break
             time.sleep(1)
-
-        print(url)
+        
+        with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+            order = json.load(f)
+        order["order"]["payment_link"] = "https://kaasijs.com"
+        with open(f"orders/{order_id}.json", "w", encoding="utf-8") as f:
+            f.write(json.dumps(order, indent=4))
         
         print("STAGE: Breakdown, Breakdown!")
         driver.quit()

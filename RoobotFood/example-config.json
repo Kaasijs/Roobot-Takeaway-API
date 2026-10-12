@@ -3,11 +3,13 @@
         "url":"https://www.thuisbezorgd.nl/"
     },
     "imap":{
-        "email":"roobot@kaasijs.com",
-        "password":"RoobotFoodAp67$"
+        "email":"mail@example.com",
+        "password":""
     },
     "discord":{
         "token":"",
-        "channel":""
+        "category_id":"",
+        "order_timeout":600,
+        "payment_timeout":1200
     }
 }

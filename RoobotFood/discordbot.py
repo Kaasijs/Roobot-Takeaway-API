@@ -1,90 +1,161 @@
-import json
 import discord
-import time
-from enum import Enum
+from discord.ext import commands
+import json
+import traceback
+import asyncio
+from functools import wraps
 
-class Status(Enum):
-    Initialized = 1
-    AwaitingResponse = 2
-    Timedout = 3
-    Rejected = 4
-    Accepted = 5
-    
-status = Status.Initialized
+def log_errors(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except Exception:
+            traceback.print_exc()
+            raise
+
+    return wrapper
 
 # Load config
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 
-def send_message(channel:int,msg:str):
-    class MyClient(discord.Client):
-        async def on_ready(self):
-            print(f"sending message {msg} as {self.user} in {channel}!")
-            await client.get_channel(channel).send(msg)
-            return
+category_id = int(config["discord"]["category_id"])
 
-    intents = discord.Intents.default()
-    intents.message_content = True
+intents = discord.Intents.default()
+client = commands.Bot(command_prefix="!", intents=intents)
 
-    client = MyClient(intents=intents)
-    client.run(config["discord"]["token"])
+@log_errors
+@client.event
+async def on_ready():
+    print(f"Discord: Ready as {client.user}!")
 
-def send_payment_request(msg: str, payment_link: str, order_id:int, category_id= int(config["discord"]["category_id"]), guild_id= int(config["discord"]["guild_id"]), timeout=1200):
-    global status
-    status = Status.AwaitingResponse
+@log_errors
+@client.event
+async def on_error(event, *args, **kwargs):
+    import traceback
+    traceback.print_exc()
+
+async def get_channel(channel_id:int):
+    channel = client.get_channel(channel_id)
+    if channel is None:
+        channel = await client.fetch_channel(channel_id)
+        if channel is None:
+            raise ValueError(f"Channel {channel_id} was not found.")
+    return channel
+
+@log_errors
+async def send_message(channel_id:int,msg:str,*args, **kwargs):
+    print(f"Discord: Send {msg} in {channel_id}")
+    channel = await get_channel(int(channel_id))
+    return await channel.send(msg, *args, **kwargs, allowed_mentions=discord.AllowedMentions(everyone=True,users=False,roles=False,))
+
+@log_errors
+async def create_order(order_id:str):
+    print(f"Discord: Creating order {order_id} in {category_id}")
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
+
+    category = client.get_channel(category_id)
+    if not isinstance(category, discord.CategoryChannel):
+        raise ValueError(f"Category {category_id} was not found.")
     
-    start_time = time.time()
-    while time.time() - start_time < timeout:    
-        class MyClient(discord.Client):
-            async def on_ready(self):
-                print(f"sending payment request as {self.user} to {category_id} in {guild_id}!")
-                
-                guild = client.get_guild(int(guild_id))
-                if guild is None:
-                    raise ValueError(f"Guild {guild_id} not found. Check the guild ID and bot membership.")
+    guild = category.guild
 
-                category = guild.get_channel(category_id)
-                if not isinstance(category, discord.CategoryChannel):
-                    raise ValueError(f"Category {category_id} was not found in guild {guild.id}.")
+    channel = await guild.create_text_channel(name=f"🤖・order-{order_id}", category=category, reason="Create order",)
+    await channel.edit(sync_permissions=True)
+    
+    order.setdefault("discord", {})
+    order["discord"]["channel"] = channel.id
+    
+    with open(f"orders/{order_id}.json", "w", encoding="utf-8") as f:
+        f.write(json.dumps(order, indent=4))
 
-                channel = await guild.create_text_channel(name=f"🤖・order-{order_id}", category=category, reason="Create order",)
-                await channel.edit(sync_permissions=True)
-                
-                await channel.send(
-                    content=f"@here\n{msg}",
-                    view=OrderButtons(),
-                    allowed_mentions=discord.AllowedMentions(
-                        everyone=True,
-                        users=False,
-                        roles=False,
-                    ),
-                )
+class RequestOrderPrompt(discord.ui.View):
+    def __init__(self, order_id, channel_id):
+        super().__init__(timeout=config["discord"]["order_timeout"])
+        self.order_id = order_id
+        self.result_future = asyncio.get_running_loop().create_future()
+        self.channel_id = channel_id
+    
+    @log_errors
+    async def wait_for_result(self) -> str:
+        return await self.result_future
+
+    @log_errors
+    async def on_timeout(self):
+        await get_channel(int(self.channel_id)).delete(reason="Remove order")
+        self.result_future.set_result("timeout")
         
-        class OrderButtons(discord.ui.View):
-            def __init__(self):
-                super().__init__(timeout=None)
-
-            @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="order:accept")
-            async def accept_order(self, interaction: discord.Interaction, button: discord.ui.Button):         
-                timeout += 600
-                await interaction.channel.send(f"Payment needed UwU\n{payment_link}")
-                global status
-                status = Status.Accepted
-                break
-            
-            @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger, custom_id="order:reject")
-            async def reject_order(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.channel.delete(reason="Remove order")
-                global status
-                status = Status.Rejected
-                
-        intents = discord.Intents.default()
-        intents.message_content = True
-
-        client = MyClient(intents=intents)
-        client.run(config["discord"]["token"])
+    @log_errors
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="order:accept")
+    async def accept_order(self, interaction: discord.Interaction, button: discord.ui.Button): 
+        await interaction.response.edit_message(view=None)
+        self.result_future.set_result("accepted")
     
-    else:
-        status = Status.Timedout
+    @log_errors
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger, custom_id="order:reject")
+    async def reject_order(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=None)
+        await interaction.channel.delete(reason="Remove order")
+        self.result_future.set_result("rejected")
+
+@log_errors
+async def send_order_request(order_id:str):
+    print(f"Discord: Loading payment request for order {order_id}")
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
     
-    return
+    channel_id = order["discord"]["channel"]
+    username = order["user"]["name"]
+    address = order["user"]["address"]
+    phone = order["user"]["phone"]
+    restaurant = order["order"]["restaurant"]
+    
+    msg_items = ""
+    for i in order["order"]["items"]:
+        item = i["name"]
+        msg_items += f"- {item}\n"
+        for ii in i["options"]:
+            msg_items += f"> {ii}\n"
+    
+    msg:str = f"\n**RESTAURANT**\n{restaurant}\n\n**ITEMS**\n{msg_items}\n**USER**\n- {address}\n- {phone}\n"
+    
+    await send_message(channel_id, msg=msg)
+    
+    view = RequestOrderPrompt(order_id, channel_id)
+    await send_message(channel_id, msg=f"Please approve @{username}'s order. @here", view=view)
+    result = await view.wait_for_result()
+    
+    return result # timeout , accepted , rejected
+
+class RequestPaymentPrompt(discord.ui.View):
+    def __init__(self, payment_link, channel_id):
+        super().__init__(timeout=config["discord"]["payment_timeout"])
+        self.payment_link = payment_link
+        self.add_item(label="Ideal / Wero", style=discord.ButtonStyle.link, custom_id="order:accept", url=str(self.payment_link))
+        self.channel_id = channel_id
+
+    @log_errors
+    async def on_timeout(self):
+        await get_channel(int(self.channel_id)).delete(reason="Remove order")
+
+
+@log_errors
+async def send_payment_request(order_id:int, payment_link: str):
+    print(f"Discord: Loading payment request for order {order_id}")
+    
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
+        
+    channel_id = order["discord"]["channel"]
+    channel = await get_channel(channel_id)
+
+    username = order["user"]["name"]
+    address = order["user"]["address"]
+    phone = order["user"]["phone"]
+    
+    msg:str = f"{payment_link}"
+    
+    view = RequestOrderPrompt(order_id, channel_id)
+    await send_message(channel_id, msg=msg, view=view)    

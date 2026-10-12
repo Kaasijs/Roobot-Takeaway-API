@@ -1,7 +1,12 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 import pprint
 import bot
+import discordbot
+import uuid
+import json
 
 # -----------------------------------------------------------------------------------
 #
@@ -23,8 +28,20 @@ import bot
 #
 # -----------------------------------------------------------------------------------
 
+# Load config
+with open('config.json', 'r') as f:
+    config = json.load(f)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    token = config["discord"]["token"]
+    discordbot_task = asyncio.create_task(discordbot.client.start(token))
+    yield
+    await discordbot.client.close()
+    await discordbot_task
+
 # Do api stuff
-app = FastAPI(title="Roobot Food Order API blabla~ UwU", version="1.0.0")
+app = FastAPI(title="Roobot Food Order API blabla~ UwU", version="1.0.0", lifespan=lifespan)
 
 @app.get("/")
 async def root():
@@ -51,11 +68,16 @@ class Payload(BaseModel):
 @app.post("/order")
 def create_order(payload:Payload):
     order = payload.model_dump()
-
-    pprint.pp("new order received:")
+    
+    #Create order
+    order_id = str(uuid.uuid4()).replace('-', '')[:8]
+    with open(f"orders/{order_id}.json", "w", encoding="utf-8") as f:
+        f.write(json.dumps(order, indent=4))
+    
+    pprint.pp(f"created order {order_id} : ")
     pprint.pp(order)
     
-    ideal_link:str = bot.order(order)
+    ideal_link:str = bot.order(order_id)
     
     raise HTTPException(
     status_code = status.HTTP_402_PAYMENT_REQUIRED,
