@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 import pprint
-import json
 import bot
 
 # -----------------------------------------------------------------------------------
@@ -23,11 +22,6 @@ import bot
 #                               pip install seleniumbase
 #
 # -----------------------------------------------------------------------------------
-
-# Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
-
 
 # Do api stuff
 app = FastAPI(title="Roobot Food Order API blabla~ UwU", version="1.0.0")
@@ -56,15 +50,12 @@ class Payload(BaseModel):
 
 @app.post("/order")
 def create_order(payload:Payload):
-    order_details = config
-    payload_dict = payload.model_dump()
-    order_details["order"] = payload_dict["order"]
-    order_details["user"] = payload_dict["user"]
+    order = payload.model_dump()
 
     pprint.pp("new order received:")
-    pprint.pp(order_details) 
+    pprint.pp(order)
     
-    ideal_link:str = bot.order(order_details)
+    ideal_link:str = bot.order(order)
     
     raise HTTPException(
     status_code = status.HTTP_402_PAYMENT_REQUIRED,

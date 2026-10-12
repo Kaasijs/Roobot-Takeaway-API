@@ -5,5 +5,9 @@
     "imap":{
         "email":"roobot@kaasijs.com",
         "password":"RoobotFoodAp67$"
+    },
+    "discord":{
+        "token":"",
+        "channel":""
     }
 }

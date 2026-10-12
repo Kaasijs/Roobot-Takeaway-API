@@ -72,22 +72,22 @@ def get_email_body(msg):
 
     return ""
 
-
 def wait_for_email(
-    username,
-    password,
     sender=None,
     subject=None,
     timeout=300,
     inbox="Junk",
     check_every=8
 ):
+    # Load config
+    with open('config.json', 'r') as f:
+        config = json.load(f)
 
     IMAP_HOST = "mail.kaasijs.com"
     IMAP_PORT = 993
 
-    BRIDGE_USERNAME = username
-    BRIDGE_PASSWORD = password
+    BRIDGE_USERNAME = config["imap"]["email"]
+    BRIDGE_PASSWORD = config["imap"]["password"]
     
     mail = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
 

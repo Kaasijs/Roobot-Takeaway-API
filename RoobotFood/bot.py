@@ -6,28 +6,16 @@ from mail import wait_for_email
 import json
 import pprint
 
-# -----------------------------------------------------------------------------------
-#
-# ██████╗░░█████╗░░█████╗░██████╗░░█████╗░████████╗  ███████╗░█████╗░░█████╗░██████╗░
-# ██╔══██╗██╔══██╗██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝  ██╔════╝██╔══██╗██╔══██╗██╔══██╗ 
-# ██████╔╝██║░░██║██║░░██║██████╦╝██║░░██║░░░██║░░░  █████╗░░██║░░██║██║░░██║██║░░██║ 
-# ██╔══██╗██║░░██║██║░░██║██╔══██╗██║░░██║░░░██║░░░  ██╔══╝░░██║░░██║██║░░██║██║░░██║ 
-# ██║░░██║╚█████╔╝╚█████╔╝██████╦╝╚█████╔╝░░░██║░░░  ██║░░░░░╚█████╔╝╚█████╔╝██████╔╝ 
-# ╚═╝░░╚═╝░╚════╝░░╚════╝░╚═════╝░░╚════╝░░░░╚═╝░░░  ╚═╝░░░░░░╚════╝░░╚════╝░╚═════╝░ 
-#
-#                        By Kaasijs, https://kaasijs.github.io/
-#
-#             A Dockerized bot for ordering food of just eat takeaway websites
-#                                   With json input
-#
-# --------------------------------  Python Librarys  --------------------------------
-#
-#                               pip install seleniumbase
-#
-# -----------------------------------------------------------------------------------
+# Load config
+with open('config.json', 'r') as f:
+    config = json.load(f)
 
-def order(data):
+def order(order):
     with SB(uc=True) as sb:
+        data = config
+        data["order"] = order["order"]
+        data["user"] = order["user"]
+        
         driver = sb.driver
         
         driver.get(data["platform"]["url"])
@@ -130,8 +118,6 @@ def order(data):
         driver.type(email_input, data["imap"]["email"] + Keys.ENTER)
 
         email_body = wait_for_email(
-            username=data["imap"]["email"],
-            password=data["imap"]["password"],
             sender="no-reply@thuisbezorgd.nl",
             subject="Your verification code",
             timeout=300,
