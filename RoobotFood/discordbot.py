@@ -62,7 +62,9 @@ async def create_order(order_id:str):
     
     guild = category.guild
 
-    channel = await guild.create_text_channel(name=f"🤖・order-{order_id}", category=category, reason="Create order",)
+    name = config["discord"]["order_channel_name"].format(order_id=order_id)
+    
+    channel = await guild.create_text_channel(name=name, category=category, reason="Create order",)
     await channel.edit(sync_permissions=True)
     
     order.setdefault("discord", {})
@@ -70,6 +72,8 @@ async def create_order(order_id:str):
     
     with open(f"orders/{order_id}.json", "w", encoding="utf-8") as f:
         f.write(json.dumps(order, indent=4))
+    
+    return channel.id
 
 class RequestOrderPrompt(discord.ui.View):
     def __init__(self, order_id, channel_id):
@@ -84,7 +88,8 @@ class RequestOrderPrompt(discord.ui.View):
 
     @log_errors
     async def on_timeout(self):
-        await get_channel(int(self.channel_id)).delete(reason="Remove order")
+        channel = await get_channel(self.channel_id)
+        await channel.delete(reason="Timedout order")
         self.result_future.set_result("timeout")
         
     @log_errors
@@ -119,26 +124,26 @@ async def send_order_request(order_id:str):
         for ii in i["options"]:
             msg_items += f"> {ii}\n"
     
-    msg:str = f"\n**RESTAURANT**\n{restaurant}\n\n**ITEMS**\n{msg_items}\n**USER**\n- {address}\n- {phone}\n"
-    
-    await send_message(channel_id, msg=msg)
+    msg:str = f"# ORDER FROM @{username}\n\n**RESTAURANT**\n{restaurant}\n\n**ITEMS**\n{msg_items}\n**USER**\n- {address}\n- {phone}\n\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU"
     
     view = RequestOrderPrompt(order_id, channel_id)
-    await send_message(channel_id, msg=f"Please approve @{username}'s order. @here", view=view)
+    await send_message(channel_id, msg=msg, view=view)
     result = await view.wait_for_result()
     
     return result # timeout , accepted , rejected
 
 class RequestPaymentPrompt(discord.ui.View):
-    def __init__(self, payment_link, channel_id):
+    def __init__(self, order_id, channel_id, payment_link):
         super().__init__(timeout=config["discord"]["payment_timeout"])
         self.payment_link = payment_link
-        self.add_item(label="Ideal / Wero", style=discord.ButtonStyle.link, custom_id="order:accept", url=str(self.payment_link))
+        self.order_id = order_id
+        self.add_item(discord.ui.Button(label="Ideal / Wero", style=discord.ButtonStyle.link, url=payment_link))
         self.channel_id = channel_id
 
     @log_errors
     async def on_timeout(self):
-        await get_channel(int(self.channel_id)).delete(reason="Remove order")
+        channel = await get_channel(self.channel_id)
+        await channel.delete(reason="Timedout order")
 
 
 @log_errors
@@ -155,7 +160,18 @@ async def send_payment_request(order_id:int, payment_link: str):
     address = order["user"]["address"]
     phone = order["user"]["phone"]
     
-    msg:str = f"{payment_link}"
+    msg:str = f"Select a payment option"
     
-    view = RequestOrderPrompt(order_id, channel_id)
-    await send_message(channel_id, msg=msg, view=view)    
+    view = RequestPaymentPrompt(order_id, channel_id, payment_link)
+    await send_message(channel_id, msg=msg, view=view)
+    
+@log_errors
+async def remove_order(order_id:str):
+    print(f"Discord: Removing order {order_id} in {category_id}")
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
+
+    channel = await get_channel(int(order["discord"]["channel"]))
+    await channel.delete()
+    
+    return 

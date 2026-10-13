@@ -9,6 +9,7 @@
     "discord":{
         "token":"",
         "category_id":"",
+        "order_channel_name":"order-{order_id}",
         "order_timeout":600,
         "payment_timeout":1200
     }
