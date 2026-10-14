@@ -1,6 +1,9 @@
 from config import config
 from seleniumbase import SB
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import asyncio
 from mail import wait_for_email
 import json
@@ -44,17 +47,31 @@ async def order(order_id):
         
         await AutomatedPages.hint("STAGE: initialized")
 
+        if config["need_approval"] and not ("ideal" in config["payment_method"]):
+            request_results = await AutomatedPages.request_approval()
+            if request_results == "accepted":
+                await AutomatedPages.hint("STAGE: Recieved approval!")
+            elif request_results == "rejected":
+                await AutomatedPages.hint("STAGE: Rejected ;w;")
+                AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
+                driver.quit()
+                return
+            else:
+                await AutomatedPages.hint("STAGE: Timeout")
+                AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
+                driver.quit()
+                return
+        
         await AutomatedPages.combo_page()
         await AutomatedPages.main_page()
         await AutomatedPages.resturant_page()
         await AutomatedPages.login_page()
         await AutomatedPages.checkout_page()
-        if config["need_approval"]:
-            await AutomatedPages.request_approval()
 
         if "creditcard" in config["payment_method"]:
             await AutomatedPages.payment_CreditCard()
         elif "ideal" in config["payment_method"]:
+            await AutomatedPages.request_approval()
             await AutomatedPages.payment_Ideal()
         else:
             print("No method found!")
@@ -104,17 +121,30 @@ class Automation:
 
     async def find_element(self, selector, timeout=12):
         try:
-            self.driver.wait_for_element_visible(selector, timeout=timeout)
-            #self.driver.wait_for_element_clickable(selector, timeout=timeout)
+            element = self.driver.wait_for_element_visible(
+                selector, timeout=timeout
+            )
+
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            from selenium.webdriver.common.by import By
+
+            WebDriverWait(self.driver, timeout).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+            )
+
+            await self.hint(prefix="-# ⤷ ", msg=f"Found and clickable: {selector}")
+            
+            return element
 
         except Exception as e:
-            await self.hint(prefix="-# **X ", msg=f"Could not Find or Interact with: {selector}", subfix="**")
+            await self.hint(
+                prefix="-# **X ",
+                msg=f"Could not Find or Interact with: {selector}",
+                subfix="**"
+            )
             self.driver.quit()
             raise e
-
-        await self.hint(prefix="-# ⤷ ", msg=f"Found and clickable: {selector}")
-
-        return selector
 
     def remove_cookies_banner(self):
         self.driver.execute_script("""
@@ -150,20 +180,20 @@ class Automation:
         self.remove_cookies_banner()
         
         web_general_area_searchbar = await self.find_element('input[data-qa="location-panel-search-input-address-element"]')
-        self.driver.type(web_general_area_searchbar, str(self.data["user"]["address"]))
+        web_general_area_searchbar.send_keys(str(self.data["user"]["address"]))
 
         web_general_area_list = await self.find_element('li[data-qa="location-panel-results-item-element"]')
-        self.driver.click(web_general_area_list)
+        web_general_area_list.click()
 
     async def main_page(self):
         await self.hint("STAGE: Main page")
         self.remove_cookies_banner()
         
         web_restaurant_searchbar = await self.find_element('input[data-qa="restaurant-list-search-element"]')
-        self.driver.type(web_restaurant_searchbar, str(self.data["order"]["restaurant"]) + Keys.ENTER)
+        web_restaurant_searchbar.send_keys(str(self.data["order"]["restaurant"]) + Keys.ENTER)
 
         web_restaurant_list = await self.find_element('a:has(span[data-qa="restaurant-info-name"])')
-        self.driver.click(web_restaurant_list)
+        web_restaurant_list.click()
 
     async def resturant_page(self):
         await self.hint("STAGE: Resturaunt page")
@@ -175,8 +205,7 @@ class Automation:
             
             item_name = i["name"]
             web_menu_search = await self.find_element('input[data-qa="menu-category-nav-search-element"]')
-            
-            self.driver.type(web_menu_search, clear + item_name)
+            web_menu_search.send_keys(clear + item_name)
 
             await asyncio.sleep(2)
             self.remove_cookies_banner()
@@ -203,7 +232,7 @@ class Automation:
             await self.hint("Item added: " + str(item_name))
 
         web_checkout = await self.find_element('pie-button[data-qa="sidebar-action-checkout"]')
-        self.driver.click(web_checkout)
+        web_checkout.click()
 
     async def login_page(self):
         await self.hint("STAGE: Login page")
@@ -217,7 +246,7 @@ class Automation:
         await self.hint("STAGE: Login page / Mail")
         await asyncio.sleep(1)
         email_input = await self.find_element('input[type="email"][name="email"][autocomplete="email"]')
-        self.driver.type(email_input, self.data["imap"]["email"] + Keys.ENTER)
+        email_input.send_keys(self.data["imap"]["email"] + Keys.ENTER)
 
         email_body = wait_for_email(
             sender="no-reply@thuisbezorgd.nl",
@@ -238,7 +267,7 @@ class Automation:
         await self.hint(f"STAGE: Login page / Mail / Received Code: {code}")
         
         email_input = await self.find_element('input[name="otpCode"][placeholder="Enter your verification code"]')
-        self.driver.type(email_input, code + Keys.ENTER)
+        email_input.send_keys(code + Keys.ENTER)
         await asyncio.sleep(3)
 
     async def checkout_page(self):
@@ -246,7 +275,7 @@ class Automation:
         self.remove_cookies_banner()
 
         web_checkout_personal = await self.find_element('[data-qa="personal-details-interactive"]',30)
-        self.driver.click(web_checkout_personal)
+        web_checkout_personal.click()
 
         self.driver.type('input[name="firstName"]', clear + self.data["user"]["name"])
         self.driver.type('input[name="lastName"]', clear + "roobot")
@@ -256,30 +285,30 @@ class Automation:
         
         self.remove_cookies_banner()
         
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
         
         # web_checkout_adress = await self.find_element('[data-qa="delivery-address-description"]')
-        # self.driver.click(web_checkout_adress)
+        # web_checkout_adress.click()
 
         # web_checkout_time = await self.find_element('[data-qa="shipping-time-title"]')
-        # self.driver.click(web_checkout_time)
+        # web_checkout_time.click()
 
         # web_checkout_time_asap = await self.find_element('[data-qa="radio-element"]')
-        # self.driver.click(web_checkout_time_asap)
+        # web_checkout_time_asap.click()
 
         web_checkout_payment = await self.find_element('[data-qa="payment-method-interactive"]')
-        self.driver.click(web_checkout_payment)
+        web_checkout_payment.click()
 
         await asyncio.sleep(3)
 
     async def checkout_page_exit(self):
         web_checkout_payment_choose_submit = await self.find_element('pie-button[data-qa="payment-modal-action-submit"]')
-        self.driver.click(web_checkout_payment_choose_submit)
+        web_checkout_payment_choose_submit.click()
 
         await asyncio.sleep(1)
         
         web_checkout_order_and_pay = await self.find_element('pie-button[data-qa="proceed-checkout-button-action-submit-order"]')
-        self.driver.click(web_checkout_order_and_pay)
+        web_checkout_order_and_pay.click()
         
         await asyncio.sleep(1)
     
@@ -301,7 +330,7 @@ class Automation:
         await self.hint("STAGE: Ideal checkout")
         
         web_checkout_payment_choose = await self.find_element('[data-qa="payment-modal-ideal-element-element-element"]')
-        self.driver.click(web_checkout_payment_choose)
+        web_checkout_payment_choose.click()
 
         await asyncio.sleep(1)
         
@@ -322,44 +351,54 @@ class Automation:
         await self.hint("STAGE: Creditcard checkout")
         
         web_checkout_payment_choose = await self.find_element('[data-qa="payment-modal-creditcard-element-element-element"]')
-        self.driver.click(web_checkout_payment_choose)
+        web_checkout_payment_choose.click()
 
         await asyncio.sleep(1)
         
         await self.checkout_page_exit()
         
         web_save_credit_card = await self.find_element('[data-qa="save_payment_toggle"]')
-        self.driver.click(web_save_credit_card)
+        web_save_credit_card.click()
 
         await asyncio.sleep(1)
         
         cc_name = await self.find_element('input[autocomplete="cc-name"]')
-        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["cc-name"])
+        cc_name.send_keys(clear + self.data["payment_method"]["creditcard"]["cc-name"])
         
         await asyncio.sleep(1)
         
-        cc_name = await self.find_element('input[data-fieldtype="encryptedCardNumber"]')
-        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["number"])
+        # Card number — inside an iframe
+        await asyncio.sleep(1)
+        iframe = await self.find_element('[data-cse="encryptedCardNumber"] iframe')
+        self.driver.switch_to.frame(iframe)
+        cc_number = await self.find_element('input[autocomplete="cc-number"]')
+        cc_number.send_keys(clear + self.data["payment_method"]["creditcard"]["number"])
+        self.driver.switch_to.default_content()
+
+        # Expiry date — inside a separate iframe
+        await asyncio.sleep(1)
+        iframe = await self.find_element('[data-cse="encryptedExpiryDate"] iframe')
+        self.driver.switch_to.frame(iframe)
+        cc_expiry = await self.find_element('input[autocomplete="cc-exp"]')
+        cc_expiry.send_keys(clear + self.data["payment_method"]["creditcard"]["expires"])
+        self.driver.switch_to.default_content()
+
+        # CVV — inside another iframe
+        await asyncio.sleep(1)
+        iframe = await self.find_element('[data-cse="encryptedSecurityCode"] iframe')
+        self.driver.switch_to.frame(iframe)
+        cc_cvv = await self.find_element('input[autocomplete="cc-csc"]')
+        cc_cvv.send_keys(clear + self.data["payment_method"]["creditcard"]["cvv"])
+        self.driver.switch_to.default_content()
         
         await asyncio.sleep(1)
-        
-        cc_name = await self.find_element('input[data-fieldtype="encryptedExpiryDate"]')
-        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["expires"])
-        
-        await asyncio.sleep(1)
-        
-        cc_name = await self.find_element('input[data-fieldtype="encryptedSecurityCode"]')
-        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["cvv"])
-        
-        await asyncio.sleep(1)
-        
-        pay_button = await self.find_element('[data-qa="button"]',timeout=20)
-        #self.driver.click(pay_button)
+        pay_button = await self.find_element('.pay-button--sticky-bottom button[data-qa="button"]', timeout=20)
+        pay_button.click()
     
 
     async def get_tracking_mail_link(self):
         username = self.data["user"]["name"]
-        email_body = wait_for_email(
+        email_body = await wait_for_email(
             sender="no-reply@connect.thuisbezorgd.nl",
             subject=f"{username}, order confirmed",
             timeout=300,

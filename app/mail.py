@@ -3,6 +3,7 @@ import email
 import time
 import json
 from email.header import decode_header
+from config import config
 
 def decode_text(value):
     if not value:
@@ -72,16 +73,14 @@ def get_email_body(msg):
 
     return ""
 
-def wait_for_email(
+async def wait_for_email(
     sender=None,
     subject=None,
     timeout=300,
     inbox="Junk",
     check_every=8
 ):
-    # Load config
-    with open('config.json', 'r') as f:
-        config = json.load(f)
+    global config
 
     IMAP_HOST = "mail.kaasijs.com"
     IMAP_PORT = 993

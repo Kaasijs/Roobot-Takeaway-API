@@ -3,6 +3,6 @@ __pycache__/
 *.pyc
 .git/
 .env
-config.json
+config/config.json
 orders/
 users/

@@ -229,7 +229,7 @@ async def send_order_request(order_id:str):
         for ii in i["options"]:
             msg_items += f"> {ii}\n"
     
-    msg:str = f"# ORDER FROM @{username}\n\n**RESTAURANT**\n{restaurant}\n\n**ITEMS**\n{msg_items}\n**USER**\n- {address}\n- {phone}\n\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU"
+    msg:str = f"# Please aprove **@{username}**'s order!\nㅤ\n**RESTAURANT**\n{restaurant}\n\n**ITEMS**\n{msg_items}\n**USER**\n- {address}\n- {phone}\n\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU"
     
     view = RequestOrderPrompt(order_id, channel_id)
     await send_message(channel_id, msg=msg, view=view)
@@ -264,7 +264,7 @@ async def send_payment_request(order_id:int, payment_link: str):
     address = order["user"]["address"]
     phone = order["user"]["phone"]
     
-    msg:str = f"Select a payment option"
+    msg:str = f"[Payment needed!]]({payment_link})\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU"
     
     view = RequestPaymentPrompt(order_id, channel_id, payment_link)
     await send_message(channel_id, msg=msg, view=view)

@@ -95,12 +95,11 @@ async def create_order(payload:OrderPayload):
                     "message": "Try again in a few sec, sorry qwq."
                 })
         
-        finally:
-            return HTTPException(status_code=status.HTTP_200_OK)
-            # await discordbot.remove_order(order_id)
-            
-            # if os.path.exists(f"orders/{order_id}.json"):
-            #    os.remove(f"orders/{order_id}.json")
+        return HTTPException(status_code=status.HTTP_200_OK)
+        # await discordbot.remove_order(order_id)
+        
+        # if os.path.exists(f"orders/{order_id}.json"):
+        #     os.remove(f"orders/{order_id}.json")
     
     else:
         raise HTTPException(
@@ -118,7 +117,7 @@ async def create_user(payload:UserProfile):
         f.write(json.dumps(user, indent=4))
 
 @app.get("/order/{order_id}")
-async def get_order(order_id:int):
+async def get_order(order_id:str):
     with open(f"orders/{order_id}.json", 'r') as f:
         order = json.load(f)
     
