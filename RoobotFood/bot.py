@@ -24,9 +24,14 @@ def log_errors(func):
 with open('config.json', 'r') as f:
     config = json.load(f)
 
+
+#
+discordbot = None
+clear=""
+for i in range(0,100): clear = clear + Keys.BACK_SPACE;
+
 @log_errors
-async def order(order_id, discordbot=None):
-    # load order
+async def order(order_id):
     with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
         order = json.load(f)
     
@@ -34,236 +39,348 @@ async def order(order_id, discordbot=None):
     data["order"] = order["order"]
     data["user"] = order["user"]
     
-    clear=""
-    for i in range(0,100): clear = clear + Keys.BACK_SPACE;
-    
-    discord_channel_id=None
-    if discordbot != None:
-        discord_channel_id = int(order["discord"]["channel"])
-    
-    async def hint(msg, prefix:str="", subfix:str=""):
-        if discordbot != None:
-            await discordbot.send_message(discord_channel_id, f"{prefix}{msg}{subfix}")
-        print(f"INFO: order {order_id} : {msg}")
-        
-    
     with SB(uc=True) as sb:
         driver = sb.driver
-        
         driver.get(data["platform"]["url"])
         
-        await hint("STAGE: initialized")
+        AutomatedPages = Automation(order_id=order_id,driver=driver,data=data)
         
-        async def find_element(selector,timeout=12):
-            try:
-                driver.wait_for_element_visible(selector,timeout=timeout)
-            except Exception:
-                await hint(prefix="-# **X ", msg=f"Could not Find or Interact with: {selector}", subfix="**")
-                driver.quit()
-                raise Exception
-            finally:
-                await hint(prefix="-# ⤷ ", msg=f"Found: {selector}")
-                return selector
+        await AutomatedPages.hint("STAGE: initialized")
 
-        def remove_cookies_banner():
-            driver.execute_script("""
-                const style = document.createElement("style");
-                style.textContent = `
-                    pie-cookie-banner {
-                        display: none !important;
-                        visibility: hidden !important;
-                        pointer-events: none !important;
-                    }
-                `;
-                document.head.appendChild(style);
-            """)
-            driver.execute_script("""
-                function hideCookieBanner() {
-                    document.querySelectorAll('pie-cookie-banner').forEach(banner => {
-                        banner.style.setProperty('display', 'none', 'important');
-                    });
-                }
+        await AutomatedPages.combo_page()
+        await AutomatedPages.main_page()
+        await AutomatedPages.resturant_page()
+        await AutomatedPages.login_page()
+        await AutomatedPages.checkout_page()
+        if config["need_approval"]:
+            await AutomatedPages.request_approval()
 
-                hideCookieBanner();
-
-                new MutationObserver(hideCookieBanner).observe(
-                    document.documentElement,
-                    { childList: true, subtree: true }
-                );
-            """)
-        
-        async def combo_page():
-            await hint("STAGE: Combo page")
-            remove_cookies_banner()
+        if "creditcard" in config["payment_method"]:
+            await AutomatedPages.payment_CreditCard()
+        elif "ideal" in config["payment_method"]:
+            await AutomatedPages.payment_Ideal()
+        else:
+            print("No method found!")
             
-            web_general_area_searchbar = await find_element('input[data-qa="location-panel-search-input-address-element"]')
-            driver.type(web_general_area_searchbar, str(data["user"]["address"]))
-
-            web_general_area_list = await find_element('li[data-qa="location-panel-results-item-element"]')
-            driver.click(web_general_area_list)
-
-        async def main_page():
-            await hint("STAGE: Main page")
-            remove_cookies_banner()
-            
-            web_restaurant_searchbar = await find_element('input[data-qa="restaurant-list-search-element"]')
-            driver.type(web_restaurant_searchbar, str(data["order"]["restaurant"]) + Keys.ENTER)
-
-            web_restaurant_list = await find_element('a:has(span[data-qa="restaurant-info-name"])')
-            driver.click(web_restaurant_list)
+        tracking_link = await AutomatedPages.get_tracking_mail_link()
+        try:
+            #discord
+            if discordbot != None:
+                await discordbot.send_message(order_id,f"Sucess! UWU\n tracking link: {tracking_link}")
+        except:
+            await discordbot.send_message(order_id,f"Unable to get tracking link, please contact API host ;w;")
         
-        async def resturant_page():
-            await hint("STAGE: Resturaunt page")
-            driver.execute_script("window.scrollBy(0, 500);")
-
-            for i in data["order"]["items"]:
-                await asyncio.sleep(2)
-                remove_cookies_banner()
-                
-                item_name = i["name"]
-                web_menu_search = await find_element('input[data-qa="menu-category-nav-search-element"]')
-                
-                driver.type(web_menu_search, clear + item_name)
-
-                await asyncio.sleep(2)
-                remove_cookies_banner()
-
-                driver.click(
-                    f'//li[@data-item-id]'
-                    f'[.//span[@data-qa="item-name" and normalize-space()="{item_name}"]]'
-                )
-                
-                for option in i["options"]:
-                    await asyncio.sleep(1)
-                    driver.click(
-                        f'//span['
-                        f'(@data-qa="item-choices-variants-name" '
-                        f'or @data-qa="item-choices-options-single-name")'
-                        f'and normalize-space()="{option}"'
-                        f']'
-                    )
-                
-                #TODO Make food loop for more options like sauce
-                driver.click('pie-button[data-qa="item-choices-action-submit"]')
-                driver.wait_for_element_not_visible('pie-button[data-qa="item-choices-action-submit"]', timeout=20)
-                await hint("Item added: " + str(item_name))
-
-            web_checkout = await find_element('pie-button[data-qa="sidebar-action-checkout"]')
-            driver.click(web_checkout)
-
-        async def login_page():
-            await hint("STAGE: Login page")
-            remove_cookies_banner()
-
-            await hint("STAGE: Login page / Captcha")
-            await asyncio.sleep(5)
-            remove_cookies_banner()
-            driver.uc_gui_click_captcha()
-
-            await hint("STAGE: Login page / Mail")
-            await asyncio.sleep(1)
-            email_input = await find_element('input[type="email"][name="email"][autocomplete="email"]')
-            driver.type(email_input, data["imap"]["email"] + Keys.ENTER)
-
-            email_body = wait_for_email(
-                sender="no-reply@thuisbezorgd.nl",
-                subject="Your verification code",
-                timeout=300,
-            )["body"]
-
-            def extract_verification_code(html):
-                soup = BeautifulSoup(html, "html.parser")
-                # Find the text inside the email's code box
-                for td in soup.find_all("td"):
-                    text = td.get_text(strip=True)
-                    if re.fullmatch(r"[A-Z0-9]{6}", text):
-                        return text
-                return None
-
-            code = extract_verification_code(email_body)
-            await hint(f"STAGE: Login page / Mail / Received Code: {code}")
+        if config["discord"]["order_compleet_timeout"] != 0:
+            await asyncio.sleep(config["discord"]["order_compleet_timeout"])
+        else:
+            await asyncio.sleep(9999999999999999999999999999999)
             
-            email_input = await find_element('input[name="otpCode"][placeholder="Enter your verification code"]')
-            driver.type(email_input, code + Keys.ENTER)
-            await asyncio.sleep(3)
-
-        async def checkout_page():
-            await hint("STAGE: Checkout page")
-            remove_cookies_banner()
-
-            web_checkout_personal = await find_element('[data-qa="personal-details-interactive"]',30)
-            driver.click(web_checkout_personal)
-
-            driver.type('input[name="firstName"]', clear + data["user"]["name"])
-            driver.type('input[name="lastName"]', clear + "roobot")
-            driver.type('input[name="phoneNumber"]', clear + data["user"]["phone"] + Keys.ENTER)
-
-            await asyncio.sleep(1)
-            
-            remove_cookies_banner()
-
-            # web_checkout_adress = await find_element('[data-qa="delivery-address-description"]')
-            # driver.click(web_checkout_adress)
-
-            # web_checkout_time = await find_element('[data-qa="shipping-time-title"]')
-            # driver.click(web_checkout_time)
-
-            # web_checkout_time_asap = await find_element('[data-qa="radio-element"]')
-            # driver.click(web_checkout_time_asap)
-
-            # await asyncio.sleep(1)
-
-            web_checkout_payment = await find_element('[data-qa="payment-method-interactive"]')
-            driver.click(web_checkout_payment)
-
-            await asyncio.sleep(3)
-
-            web_checkout_payment_choose = await find_element('[data-qa="payment-modal-ideal-element-element-element"]')
-            driver.click(web_checkout_payment_choose)
-
-            await asyncio.sleep(1)
-
-            web_checkout_payment_choose_submit = await find_element('pie-button[data-qa="payment-modal-action-submit"]')
-            driver.click(web_checkout_payment_choose_submit)
-
-            await asyncio.sleep(1)
-        
-        async def request_approval():
-            request = await discordbot.send_order_request(order_id)
-            if request == "accepted":
-                await request_payment()
-            if request == "timeout":
-                raise status.HTTP_408_REQUEST_TIMEOUT
-            if request == "rejected":
-                raise status.HTTP_402_PAYMENT_REQUIRED
-            else:  
-                raise status.HTTP_500_INTERNAL_SERVER_ERROR
-        
-        async def request_payment():
-            await hint("STAGE: Ideal checkout")
-            web_checkout_order_and_pay = await find_element('pie-button[data-qa="proceed-checkout-button-action-submit-order"]')
-            driver.click(web_checkout_order_and_pay)
-
-            #elements = driver.wait_for_element("xpath", "//*[contains(., 'iDEAL')]")
-            url = ""
-            while True:
-                url = driver.get_current_url()
-                if "https://pay" in url:
-                    break
-                await asyncio.sleep(1)
-            
-            await discordbot.send_payment_request(order_id,url)
-                
-        await combo_page()
-        await main_page()
-        await resturant_page()
-        await login_page()
-        await checkout_page()
-        await request_approval()
-        
-        await hint("STAGE: Breakdown, Breakdown!")
+        AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
         driver.quit()
     return
+
+async def get_resturant_menu(address:str, restaurant:str): 
+    pass
+
+
+# Web bot
+class Automation:
+    def __init__(self, order_id, driver, data):
+        global discordbot
+        self.order_id = order_id
+        self.driver = driver
+        self.data = data
+        
+        if discordbot != None:
+            with open(f"orders/{self.order_id}.json", "r", encoding="utf-8") as f:
+                order = json.load(f)
+            
+            self.discord_channel_id = int(order["discord"]["channel"])    
+
+        return
+    
+    # Reusable stuff
+    async def hint(self, msg, prefix:str="", subfix:str=""):
+        if discordbot != None:
+            await discordbot.send_message(self.discord_channel_id, f"{prefix}{msg}{subfix}")
+        print(f"INFO: order {self.order_id} : {msg}")
+
+    async def find_element(self, selector, timeout=12):
+        try:
+            self.driver.wait_for_element_visible(selector, timeout=timeout)
+            #self.driver.wait_for_element_clickable(selector, timeout=timeout)
+
+        except Exception as e:
+            await self.hint(prefix="-# **X ", msg=f"Could not Find or Interact with: {selector}", subfix="**")
+            self.driver.quit()
+            raise e
+
+        await self.hint(prefix="-# ⤷ ", msg=f"Found and clickable: {selector}")
+
+        return selector
+
+    def remove_cookies_banner(self):
+        self.driver.execute_script("""
+            const style = document.createElement("style");
+            style.textContent = `
+                pie-cookie-banner {
+                    display: none !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+        """)
+        self.driver.execute_script("""
+            function hideCookieBanner() {
+                document.querySelectorAll('pie-cookie-banner').forEach(banner => {
+                    banner.style.setProperty('display', 'none', 'important');
+                });
+            }
+
+            hideCookieBanner();
+
+            new MutationObserver(hideCookieBanner).observe(
+                document.documentElement,
+                { childList: true, subtree: true }
+            );
+        """)
+    
+    
+    # Web page automations
+    async def combo_page(self):
+        await self.hint("STAGE: Combo page")
+        self.remove_cookies_banner()
+        
+        web_general_area_searchbar = await self.find_element('input[data-qa="location-panel-search-input-address-element"]')
+        self.driver.type(web_general_area_searchbar, str(self.data["user"]["address"]))
+
+        web_general_area_list = await self.find_element('li[data-qa="location-panel-results-item-element"]')
+        self.driver.click(web_general_area_list)
+
+    async def main_page(self):
+        await self.hint("STAGE: Main page")
+        self.remove_cookies_banner()
+        
+        web_restaurant_searchbar = await self.find_element('input[data-qa="restaurant-list-search-element"]')
+        self.driver.type(web_restaurant_searchbar, str(self.data["order"]["restaurant"]) + Keys.ENTER)
+
+        web_restaurant_list = await self.find_element('a:has(span[data-qa="restaurant-info-name"])')
+        self.driver.click(web_restaurant_list)
+
+    async def resturant_page(self):
+        await self.hint("STAGE: Resturaunt page")
+        self.driver.execute_script("window.scrollBy(0, 500);")
+
+        for i in self.data["order"]["items"]:
+            await asyncio.sleep(2)
+            self.remove_cookies_banner()
+            
+            item_name = i["name"]
+            web_menu_search = await self.find_element('input[data-qa="menu-category-nav-search-element"]')
+            
+            self.driver.type(web_menu_search, clear + item_name)
+
+            await asyncio.sleep(2)
+            self.remove_cookies_banner()
+
+            self.driver.click(
+                f'//li[@data-item-id]'
+                f'[.//span[@data-qa="item-name" and normalize-space()="{item_name}"]]'
+            )
+            
+            for option in i["options"]:
+                await asyncio.sleep(1)
+                self.driver.click(
+                    f'//pie-radio[@aria-checked="false"]'
+                    f'[.//span['
+                    f'(@data-qa="item-choices-variants-name" '
+                    f'or @data-qa="item-choices-options-single-name") '
+                    f'and normalize-space()="{option}"'
+                    f']]'
+                )
+            
+            #TODO Make food loop for more options like sauce
+            self.driver.click('pie-button[data-qa="item-choices-action-submit"]')
+            self.driver.wait_for_element_not_visible('pie-button[data-qa="item-choices-action-submit"]', timeout=20)
+            await self.hint("Item added: " + str(item_name))
+
+        web_checkout = await self.find_element('pie-button[data-qa="sidebar-action-checkout"]')
+        self.driver.click(web_checkout)
+
+    async def login_page(self):
+        await self.hint("STAGE: Login page")
+        self.remove_cookies_banner()
+
+        await self.hint("STAGE: Login page / Captcha")
+        await asyncio.sleep(5)
+        self.remove_cookies_banner()
+        self.driver.uc_gui_click_captcha()
+
+        await self.hint("STAGE: Login page / Mail")
+        await asyncio.sleep(1)
+        email_input = await self.find_element('input[type="email"][name="email"][autocomplete="email"]')
+        self.driver.type(email_input, self.data["imap"]["email"] + Keys.ENTER)
+
+        email_body = wait_for_email(
+            sender="no-reply@thuisbezorgd.nl",
+            subject="Your verification code",
+            timeout=300,
+        )["body"]
+        
+        def extract_verification_code(html):
+            soup = BeautifulSoup(html, "html.parser")
+            # Find the text inside the email's code box
+            for td in soup.find_all("td"):
+                text = td.get_text(strip=True)
+                if re.fullmatch(r"[A-Z0-9]{6}", text):
+                    return text
+            return None
+
+        code = extract_verification_code(email_body)
+        await self.hint(f"STAGE: Login page / Mail / Received Code: {code}")
+        
+        email_input = await self.find_element('input[name="otpCode"][placeholder="Enter your verification code"]')
+        self.driver.type(email_input, code + Keys.ENTER)
+        await asyncio.sleep(3)
+
+    async def checkout_page(self):
+        await self.hint("STAGE: Checkout page")
+        self.remove_cookies_banner()
+
+        web_checkout_personal = await self.find_element('[data-qa="personal-details-interactive"]',30)
+        self.driver.click(web_checkout_personal)
+
+        self.driver.type('input[name="firstName"]', clear + self.data["user"]["name"])
+        self.driver.type('input[name="lastName"]', clear + "roobot")
+        self.driver.type('input[name="phoneNumber"]', clear + self.data["user"]["phone"] + Keys.ENTER)
+
+        await asyncio.sleep(3)
+        
+        self.remove_cookies_banner()
+        
+        await asyncio.sleep(3)
+        
+        # web_checkout_adress = await self.find_element('[data-qa="delivery-address-description"]')
+        # self.driver.click(web_checkout_adress)
+
+        # web_checkout_time = await self.find_element('[data-qa="shipping-time-title"]')
+        # self.driver.click(web_checkout_time)
+
+        # web_checkout_time_asap = await self.find_element('[data-qa="radio-element"]')
+        # self.driver.click(web_checkout_time_asap)
+
+        web_checkout_payment = await self.find_element('[data-qa="payment-method-interactive"]')
+        self.driver.click(web_checkout_payment)
+
+        await asyncio.sleep(3)
+
+    async def checkout_page_exit(self):
+        web_checkout_payment_choose_submit = await self.find_element('pie-button[data-qa="payment-modal-action-submit"]')
+        self.driver.click(web_checkout_payment_choose_submit)
+
+        await asyncio.sleep(1)
+        
+        web_checkout_order_and_pay = await self.find_element('pie-button[data-qa="proceed-checkout-button-action-submit-order"]')
+        self.driver.click(web_checkout_order_and_pay)
+        
+        await asyncio.sleep(1)
+    
+    
+    # Requests
+    async def request_approval(self):
+        request = await discordbot.send_order_request(self.order_id)
+        if request == "accepted":
+            return
+        elif request == "timeout":
+            raise status.HTTP_408_REQUEST_TIMEOUT
+        elif request == "rejected":
+            raise status.HTTP_402_PAYMENT_REQUIRED
+        else:  
+            raise status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    # Payements
+    async def payment_Ideal(self):
+        await self.hint("STAGE: Ideal checkout")
+        
+        web_checkout_payment_choose = await self.find_element('[data-qa="payment-modal-ideal-element-element-element"]')
+        self.driver.click(web_checkout_payment_choose)
+
+        await asyncio.sleep(1)
+        
+        await self.checkout_page_exit()
+
+        url = ""
+        while True:
+            url = self.driver.get_current_url()
+            if "https://pay" in url:
+                break
+            await asyncio.sleep(1)
+        
+        #Discord
+        if discordbot != None:
+            await discordbot.send_payment_request(self.order_id,url)
+    
+    async def payment_CreditCard(self):
+        await self.hint("STAGE: Creditcard checkout")
+        
+        web_checkout_payment_choose = await self.find_element('[data-qa="payment-modal-creditcard-element-element-element"]')
+        self.driver.click(web_checkout_payment_choose)
+
+        await asyncio.sleep(1)
+        
+        await self.checkout_page_exit()
+        
+        web_save_credit_card = await self.find_element('[data-qa="save_payment_toggle"]')
+        self.driver.click(web_save_credit_card)
+
+        await asyncio.sleep(1)
+        
+        cc_name = await self.find_element('input[autocomplete="cc-name"]')
+        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["cc-name"])
+        
+        await asyncio.sleep(1)
+        
+        cc_name = await self.find_element('input[data-fieldtype="encryptedCardNumber"]')
+        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["number"])
+        
+        await asyncio.sleep(1)
+        
+        cc_name = await self.find_element('input[data-fieldtype="encryptedExpiryDate"]')
+        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["expires"])
+        
+        await asyncio.sleep(1)
+        
+        cc_name = await self.find_element('input[data-fieldtype="encryptedSecurityCode"]')
+        self.driver.type(cc_name, clear + self.data["payment_method"]["creditcard"]["cvv"])
+        
+        await asyncio.sleep(1)
+        
+        pay_button = await self.find_element('[data-qa="button"]',timeout=20)
+        #self.driver.click(pay_button)
+    
+
+    async def get_tracking_mail_link(self):
+        username = self.data["user"]["name"]
+        email_body = wait_for_email(
+            sender="no-reply@connect.thuisbezorgd.nl",
+            subject=f"{username}, order confirmed",
+            timeout=300,
+            inbox="Inbox",
+        )["body"]
+
+        import re
+        from html import unescape
+
+        def extract_tracking_link(html):
+            html = unescape(html)
+            match = re.search(
+                r'https://www\.thuisbezorgd\.nl/foodtracker/[^\s"<>]+',
+                html
+            )
+            return match.group(0).rstrip(").,") if match else None
+
+        return extract_tracking_link(email_body)
 
 # ⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 # ⢗⡺⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀

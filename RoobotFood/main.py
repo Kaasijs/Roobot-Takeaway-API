@@ -8,6 +8,7 @@ import discordbot
 import uuid
 import json
 import os
+from models import *
 
 # -----------------------------------------------------------------------------------
 #
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     if config["discord"]["token"] =="": print("Discord Disabled"); return;
     token = config["discord"]["token"]
     discordbot_task = asyncio.create_task(discordbot.client.start(token))
+    bot.discordbot = discordbot
     yield
     await discordbot.client.close()
     await discordbot_task
@@ -49,25 +51,8 @@ app = FastAPI(title="Roobot Food Order API blabla~ UwU", version="1.0.0", lifesp
 async def root():
     return {"status": "online", "message": "Roobot Food Order API is running UwU"}
 
-class User(BaseModel):
-    name:str = Field(examples=["Roobot"])
-    address:str = Field(examples=["Torontoweg 101, 1334 KT Almere"])
-    phone:str = Field(examples=["+31655555555"])
-
-class Item(BaseModel):
-    name: str = Field(examples=["Margherita pizza","Twister meal"])
-    options: list[str] = Field(examples=[["26 cm"],["Geen Extra","Friet L","Pepsi Zero Sugar L - Standaard Beker"]])
-
-class Order(BaseModel):
-    restaurant:str = Field(examples=["Pizza Xpress","KFC"])
-    items:list[Item]
-
-class Payload(BaseModel):
-    user:User
-    order:Order
-
 @app.post("/order")
-async def create_order(payload:Payload):
+async def create_order(payload:OrderPayload):
     if discordbot.client.is_ready() or config["discord"]["token"] =="":
         order = payload.model_dump()
         
@@ -83,7 +68,7 @@ async def create_order(payload:Payload):
             if discordbot != None:
                 await discordbot.create_order(order_id)
                 
-            await bot.order(order_id, discordbot=discordbot)
+            await bot.order(order_id)
         
         except Exception:
             await discordbot.remove_order(order_id)

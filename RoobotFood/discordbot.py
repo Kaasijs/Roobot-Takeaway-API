@@ -1,10 +1,24 @@
 import discord
 from discord.ext import commands
+from urllib.request import Request, urlopen
 import json
 import traceback
 import asyncio
 from functools import wraps
+from models import *
+import bot
 
+# Load config
+with open("config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+category_id = int(config["discord"]["category_id"])
+
+intents = discord.Intents.default()
+client = commands.Bot(command_prefix="!", intents=intents)
+
+
+# Error handeling
 def log_errors(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -16,26 +30,101 @@ def log_errors(func):
 
     return wrapper
 
-# Load config
-with open("config.json", "r", encoding="utf-8") as f:
-    config = json.load(f)
-
-category_id = int(config["discord"]["category_id"])
-
-intents = discord.Intents.default()
-client = commands.Bot(command_prefix="!", intents=intents)
-
-@log_errors
-@client.event
-async def on_ready():
-    print(f"Discord: Ready as {client.user}!")
-
 @log_errors
 @client.event
 async def on_error(event, *args, **kwargs):
     import traceback
     traceback.print_exc()
 
+
+# Ready
+@log_errors
+@client.event
+async def on_ready():
+    GUILD_ID = 1319439717615407135
+    if GUILD_ID:
+        guild = discord.Object(id=GUILD_ID)
+        client.tree.copy_global_to(guild=guild)
+        await client.tree.sync(guild=guild)
+    await client.tree.sync()
+    print(f"Discord: Ready as {client.user}!")
+
+
+#commands
+disclaimer:str = "| By using this command you agree with info being shared with delivery and just eat take-a-way services, and temporarly saved on server host!"
+
+@client.tree.command(name="user", description="Create a new user!")
+@discord.app_commands.describe(
+    address=f"Example format: Torontoweg 101, 1334 KT Almere {disclaimer}",
+    phone=f"Example format: +31655555555 {disclaimer}",
+    )
+@log_errors
+async def user(interaction: discord.Interaction, address:str, phone:str):
+    payload = User(
+            name=str(interaction.user),
+            address=address,
+            phone=phone
+        )
+    
+    with open(f"users/{interaction.user.id}.json", "w", encoding="utf-8") as f:
+        f.write(json.dumps(payload.model_dump(), indent=4))
+
+    await interaction.response.send_message(f"User updated!",ephemeral=True)
+
+## TODO ORDERING. DISPLAY MENU. POST REQUEST TO ITSELF WHEN DONE  
+# @client.tree.command(name="order_create", description="Order something!")
+# @discord.app_commands.describe(
+#     restaurant=f"Example format: KFC {disclaimer}",
+#     )
+# @log_errors
+# async def order_create(interaction: discord.Interaction, restaurant:str):
+#     await interaction.response.send_message(f"Checking restaurant in your area matching that {restaurant}",ephemeral=True)
+    
+#     if not Path(f"users/{interaction.user.id}.json").exists():
+#         await interaction.response.send_message(f"Please use /user first",ephemeral=True)
+#         return
+    
+#     with open(f"users/{interaction.user.id}.json", "r", encoding="utf-8") as f:
+#         user = json.load(f)
+    
+#     menu:list = await bot.get_resturant_menu(address=user.address, restaurant=restaurant)
+    
+#     payload = Order(
+#             restaurant=restaurant
+#         )
+
+    
+#     with open(f"users/{interaction.user.id}.json", "w", encoding="utf-8") as f:
+#         f.write(json.dumps(payload.model_dump(), indent=4))
+    
+#     await interaction.response.send_message(f"User updated!",ephemeral=True)
+
+    # request = Request(
+    #     "127.0.0.1:8000",
+    #     data=json.dumps(payload).encode("utf-8"),
+    #     headers={"Content-Type": "application/json"},
+    #     method="POST"
+    # )
+
+    # try:
+    #     # Run blocking HTTP request in a worker thread
+    #     response = await __import__("asyncio").to_thread(
+    #         urlopen, request, timeout=10
+    #     )
+    #     with response:
+    #         result = response.read().decode("utf-8")
+
+
+    #     )
+    # except Exception as e:
+    #     await interaction.response.send_message(
+    #         f"Order failed: {e}",
+    #         ephemeral=True
+    #     )
+
+
+#region QOL functions
+@log_errors
 async def get_channel(channel_id:int):
     channel = client.get_channel(channel_id)
     if channel is None:
@@ -50,6 +139,8 @@ async def send_message(channel_id:int,msg:str,*args, **kwargs):
     channel = await get_channel(int(channel_id))
     return await channel.send(msg, *args, **kwargs, allowed_mentions=discord.AllowedMentions(everyone=True,users=False,roles=False,))
 
+
+#region Orders
 @log_errors
 async def create_order(order_id:str):
     print(f"Discord: Creating order {order_id} in {category_id}")
@@ -74,6 +165,17 @@ async def create_order(order_id:str):
         f.write(json.dumps(order, indent=4))
     
     return channel.id
+
+@log_errors
+async def remove_order(order_id:str):
+    print(f"Discord: Removing order {order_id} in {category_id}")
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
+
+    channel = await get_channel(int(order["discord"]["channel"]))
+    await channel.delete()
+    
+    return
 
 class RequestOrderPrompt(discord.ui.View):
     def __init__(self, order_id, channel_id):
@@ -145,7 +247,6 @@ class RequestPaymentPrompt(discord.ui.View):
         channel = await get_channel(self.channel_id)
         await channel.delete(reason="Timedout order")
 
-
 @log_errors
 async def send_payment_request(order_id:int, payment_link: str):
     print(f"Discord: Loading payment request for order {order_id}")
@@ -164,14 +265,4 @@ async def send_payment_request(order_id:int, payment_link: str):
     
     view = RequestPaymentPrompt(order_id, channel_id, payment_link)
     await send_message(channel_id, msg=msg, view=view)
-    
-@log_errors
-async def remove_order(order_id:str):
-    print(f"Discord: Removing order {order_id} in {category_id}")
-    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
-        order = json.load(f)
 
-    channel = await get_channel(int(order["discord"]["channel"]))
-    await channel.delete()
-    
-    return 

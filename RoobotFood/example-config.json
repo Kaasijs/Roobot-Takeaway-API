@@ -1,4 +1,12 @@
 {
+    "need_approval":true,
+    "payment_method":{
+        "creditcard":{
+            "number":"4938 6472 1331 9160",
+            "valid":"08/29",
+            "cvv":"287",
+            "cc-name":"Test Devlopment Card"
+        }},
     "platform":{
         "url":"https://www.thuisbezorgd.nl/"
     },
