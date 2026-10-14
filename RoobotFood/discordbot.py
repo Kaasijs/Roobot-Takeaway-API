@@ -1,3 +1,4 @@
+from config import config
 import discord
 from discord.ext import commands
 from urllib.request import Request, urlopen
@@ -7,10 +8,6 @@ import asyncio
 from functools import wraps
 from models import *
 import bot
-
-# Load config
-with open("config.json", "r", encoding="utf-8") as f:
-    config = json.load(f)
 
 category_id = int(config["discord"]["category_id"])
 
@@ -41,19 +38,20 @@ async def on_error(event, *args, **kwargs):
 @log_errors
 @client.event
 async def on_ready():
-    GUILD_ID = 1319439717615407135
+    GUILD_ID = int(config["discord"]["guild_id"])
     if GUILD_ID:
         guild = discord.Object(id=GUILD_ID)
         client.tree.copy_global_to(guild=guild)
         await client.tree.sync(guild=guild)
-    await client.tree.sync()
+    else:
+        await client.tree.sync()
     print(f"Discord: Ready as {client.user}!")
 
 
 #commands
 disclaimer:str = "| By using this command you agree with info being shared with delivery and just eat take-a-way services, and temporarly saved on server host!"
 
-@client.tree.command(name="user", description="Create a new user!")
+@client.tree.command(name="user", description=f"Update your FoodAPI infromation")
 @discord.app_commands.describe(
     address=f"Example format: Torontoweg 101, 1334 KT Almere {disclaimer}",
     phone=f"Example format: +31655555555 {disclaimer}",
@@ -132,6 +130,11 @@ async def get_channel(channel_id:int):
         if channel is None:
             raise ValueError(f"Channel {channel_id} was not found.")
     return channel
+
+@log_errors
+async def get_username(user_id:int):
+    username = client.get_user(user_id).display_name
+    return username
 
 @log_errors
 async def send_message(channel_id:int,msg:str,*args, **kwargs):

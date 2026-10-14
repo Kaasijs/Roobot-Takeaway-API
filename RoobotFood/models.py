@@ -1,10 +1,16 @@
+from config import config
 from pydantic import BaseModel, Field
 from pathlib import Path
 
 class User(BaseModel):
-    name:str = Field(examples=["Roobot"])
-    address:str = Field(examples=["Torontoweg 101, 1334 KT Almere"])
-    phone:str = Field(examples=["+31655555555"])
+    name:str = Field(examples=["Roobot",9999999999999999999])
+    address:str | None = Field(default=None, examples=["Torontoweg 101, 1334 KT Almere"])
+    phone:str | None = Field(default=None, examples=["+31655555555"])
+
+class UserProfile(BaseModel):
+    name:str = Field(examples=["Roobot",9999999999999999999])
+    address:str = Field(default=None, examples=["Torontoweg 101, 1334 KT Almere"])
+    phone:str = Field(default=None, examples=["+31655555555"])
 
 class Item(BaseModel):
     name: str = Field(examples=["Margherita pizza","Twister meal"])

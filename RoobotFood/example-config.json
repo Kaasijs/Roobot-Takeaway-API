@@ -3,7 +3,7 @@
     "payment_method":{
         "creditcard":{
             "number":"4938 6472 1331 9160",
-            "valid":"08/29",
+            "expires":"08/29",
             "cvv":"287",
             "cc-name":"Test Devlopment Card"
         }},
@@ -16,7 +16,8 @@
     },
     "discord":{
         "token":"",
-        "category_id":"",
+        "guild_id":0,
+        "category_id":0,
         "order_channel_name":"order-{order_id}",
         "order_timeout":600,
         "payment_timeout":1200

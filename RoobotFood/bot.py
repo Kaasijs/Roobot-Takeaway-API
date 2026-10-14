@@ -1,3 +1,4 @@
+from config import config
 from seleniumbase import SB
 from selenium.webdriver.common.keys import Keys
 import asyncio
@@ -19,10 +20,6 @@ def log_errors(func):
             raise
 
     return wrapper
-
-# Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
 
 
 #

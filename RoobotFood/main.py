@@ -1,3 +1,4 @@
+from config import config
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
@@ -30,10 +31,6 @@ from models import *
 #
 # -----------------------------------------------------------------------------------
 
-# Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if config["discord"]["token"] =="": print("Discord Disabled"); return;
@@ -53,8 +50,24 @@ async def root():
 
 @app.post("/order")
 async def create_order(payload:OrderPayload):
-    if discordbot.client.is_ready() or config["discord"]["token"] =="":
-        order = payload.model_dump()
+    order = payload.model_dump()    
+    using_discord = config["discord"]["token"] !=""
+    if discordbot.client.is_ready() or not using_discord:
+        # If username is a profile index (user.json)
+        if (not "address" in order) or (not "phone" in order):
+            username = order["user"]["name"]
+            if Path(f"users/{username}.json").exists():
+                with open(f"users/{username}.json", "r", encoding="utf-8") as f:
+                    user = json.load(f)
+                
+                order["user"] = user
+            else:
+                raise HTTPException(
+                    status_code = status.HTTP_400_BAD_REQUEST,
+                    detail = {
+                        "error": "Discord Intergration didnt have user info",
+                        "message": "Please make user do /user to create a user info file before ordering"
+                    })
         
         #Create order
         order_id = str(uuid.uuid4()).replace('-', '')[:8]
@@ -67,7 +80,6 @@ async def create_order(payload:OrderPayload):
         try:
             if discordbot != None:
                 await discordbot.create_order(order_id)
-                
             await bot.order(order_id)
         
         except Exception:
@@ -84,7 +96,7 @@ async def create_order(payload:OrderPayload):
                 })
         
         finally:
-            pass
+            return HTTPException(status_code=status.HTTP_200_OK)
             # await discordbot.remove_order(order_id)
             
             # if os.path.exists(f"orders/{order_id}.json"):
@@ -97,7 +109,14 @@ async def create_order(payload:OrderPayload):
             "error": "Discord Intergration was not ready",
             "message": "Try again in a few sec, sorry qwq."
         })
-    
+
+@app.post("/user")
+async def create_user(payload:UserProfile):
+    user = payload.model_dump()
+    user_name = user["name"]
+    with open(f"users/{user_name}.json", "w", encoding="utf-8") as f:
+        f.write(json.dumps(user, indent=4))
+
 @app.get("/order/{order_id}")
 async def get_order(order_id:int):
     with open(f"orders/{order_id}.json", 'r') as f:
