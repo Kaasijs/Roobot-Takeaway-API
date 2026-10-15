@@ -68,7 +68,7 @@ all the payment type the bot can work with right now:
 
 ### Ideal
 ```
-{"payment_method":"Ideal"}
+"payment_method":"Ideal"
 ```
 - For now You need **Approvals** and **Discord** working for this to work properly!
 
