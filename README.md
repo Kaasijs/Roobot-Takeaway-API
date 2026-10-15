@@ -52,14 +52,6 @@ services:
 The API is available at:
 http://localhost:8000/docs#/default/create_order_order_post
 
-
-# Build image from source
-git clone https://github.com/seleniumbase/SeleniumBase.git
-cd /SeleniumBase
-docker build --no-cache -t seleniumbase-local .
-cd /app
-docker build --no-cache -t roobotfood:1.0 .
-
 # Config
 Please refure to ``/app/config/example-config``
 
@@ -112,6 +104,15 @@ Discord intergration is used for creating user profiles and easy access to order
 - the ``{order_id}`` is a placeholder for the order's uniqe number. you can remove it if you prefure not to use it
 - the last _timeout(s) are used for the buttons generated in the channel
 they will automaticly delete the chanel when expired
+
+
+# Build image from source
+```git clone https://github.com/seleniumbase/SeleniumBase.git```
+```cd /SeleniumBase```
+```docker build --no-cache -t seleniumbase-local .```
+```cd /app```
+```docker build --no-cache -t roobotfood:1.0 .```
+
 
 ## Approval
 - ``"need_approval":true`` Will
