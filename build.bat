@@ -1,5 +1,7 @@
 @echo on
 
+cd app
+
 REM Build from src
 docker build --no-cache -t kaasijs/roobotfoodapi:1.0 .
 docker build --no-cache -t kaasijs/roobotfoodapi:nightly .
