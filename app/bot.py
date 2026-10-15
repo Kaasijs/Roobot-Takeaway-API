@@ -53,12 +53,12 @@ async def order(order_id):
                 await AutomatedPages.hint("STAGE: Recieved approval!")
             elif request_results == "rejected":
                 await AutomatedPages.hint("STAGE: Rejected ;w;")
-                AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
+                await AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
                 driver.quit()
                 return
             else:
                 await AutomatedPages.hint("STAGE: Timeout")
-                AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
+                await AutomatedPages.hint("STAGE: Breakdown, Breakdown!")
                 driver.quit()
                 return
         
