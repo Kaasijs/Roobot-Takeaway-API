@@ -105,16 +105,14 @@ Discord intergration is used for creating user profiles and easy access to order
 - the last _timeout(s) are used for the buttons generated in the channel
 they will automaticly delete the chanel when expired
 
-
-# Build image from source
-```git clone https://github.com/seleniumbase/SeleniumBase.git```
-```cd /SeleniumBase```
-```docker build --no-cache -t seleniumbase-local .```
-```cd /app```
-```docker build --no-cache -t roobotfood:1.0 .```
-
-
 ## Approval
 - ``"need_approval":true`` Will
 Ask the approval for all orders posted to the API. Right now you need Discord configured for this to work properly (I am planning on adding Telegram bots as an alternative!)
 - ``"need_approval":false`` To skip
+
+# Build image from source
+1. ``git clone https://github.com/seleniumbase/SeleniumBase.git``
+2. ``cd /SeleniumBase``
+3. ``docker build --no-cache -t seleniumbase-local .``
+4. ``cd ../app``
+5. ``docker build --no-cache -t roobotfood:1.0 .``
