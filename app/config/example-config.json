@@ -2,9 +2,9 @@
     "need_approval":true,
     "payment_method":{
         "creditcard":{
-            "number":"4938 6472 1331 9160",
-            "expires":"08/29",
-            "cvv":"287",
+            "number":"0000 0000 0000 0000",
+            "expires":"06/29",
+            "cvv":"000",
             "cc-name":"Test Devlopment Card"
         }},
     "platform":{
