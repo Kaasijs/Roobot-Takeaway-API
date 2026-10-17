@@ -171,7 +171,7 @@ def wait_for_email(
                         "raw": raw_email,
                     }
 
-            asyncio.sleep(check_every)
+            time.sleep(check_every)
 
     finally:
         mail.logout()
