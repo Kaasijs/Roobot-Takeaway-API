@@ -1,3 +1,4 @@
+import asyncio
 import imaplib
 import email
 import time
@@ -73,7 +74,7 @@ def get_email_body(msg):
 
     return ""
 
-async def wait_for_email(
+def wait_for_email(
     sender=None,
     subject=None,
     timeout=300,
@@ -170,7 +171,7 @@ async def wait_for_email(
                         "raw": raw_email,
                     }
 
-            time.sleep(check_every)
+            asyncio.sleep(check_every)
 
     finally:
         mail.logout()

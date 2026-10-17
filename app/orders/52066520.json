@@ -1,0 +1,23 @@
+{
+    "user": {
+        "name": "kaasijs",
+        "address": "Johannes Vermeerstraat 103, 1318 HR Almere",
+        "phone": "+31640041353"
+    },
+    "order": {
+        "restaurant": "KFC Almere Buiten",
+        "items": [
+            {
+                "name": "Red Bull EA Sports FC 27 Box meal deal",
+                "options": [
+                    "Friet L",
+                    "Friet L",
+                    "Pepsi L - Herbruikbare Beker"
+                ]
+            }
+        ]
+    },
+    "discord": {
+        "channel": 1561018069654966293
+    }
+}

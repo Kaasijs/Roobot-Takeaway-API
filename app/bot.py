@@ -4,6 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 import asyncio
 from mail import wait_for_email
 import json
@@ -231,6 +232,25 @@ class Automation:
             self.driver.wait_for_element_not_visible('pie-button[data-qa="item-choices-action-submit"]', timeout=20)
             await self.hint("Item added: " + str(item_name))
 
+            asyncio.sleep(1)
+            
+            #This is a promotion popup
+            def refresh_if_free_item_modal_appears():
+                try:
+                    self.driver.find_element(
+                        By.CSS_SELECTOR,
+                        '[data-qa="free-item-modal"]'
+                    )
+                    self.hint("WARN: Free-item modal detected! Please make sure order doesnt miss out on deals!\n-# Refreshing page...")
+                    self.driver.refresh()
+                    asyncio.sleep(3)
+                    return True
+
+                except NoSuchElementException:
+                    return False
+            
+            refresh_if_free_item_modal_appears()
+
         web_checkout = await self.find_element('pie-button[data-qa="sidebar-action-checkout"]')
         web_checkout.click()
 
@@ -315,15 +335,16 @@ class Automation:
     
     # Requests
     async def request_approval(self):
-        request = await discordbot.send_order_request(self.order_id)
-        if request == "accepted":
-            return
-        elif request == "timeout":
-            raise status.HTTP_408_REQUEST_TIMEOUT
-        elif request == "rejected":
-            raise status.HTTP_402_PAYMENT_REQUIRED
-        else:  
-            raise status.HTTP_500_INTERNAL_SERVER_ERROR
+        return await discordbot.send_order_request(self.order_id)
+        # request = await discordbot.send_order_request(self.order_id)
+        # if request == "accepted":
+        #     return
+        # elif request == "timeout":
+        #     raise status.HTTP_408_REQUEST_TIMEOUT
+        # elif request == "rejected":
+        #     raise status.HTTP_402_PAYMENT_REQUIRED
+        # else:  
+        #     raise status.HTTP_500_INTERNAL_SERVER_ERROR
     
     # Payements
     async def payment_Ideal(self):
@@ -398,7 +419,7 @@ class Automation:
 
     async def get_tracking_mail_link(self):
         username = self.data["user"]["name"]
-        email_body = await wait_for_email(
+        email_body = wait_for_email(
             sender="no-reply@connect.thuisbezorgd.nl",
             subject=f"{username}, order confirmed",
             timeout=300,

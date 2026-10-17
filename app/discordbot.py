@@ -138,7 +138,7 @@ async def get_username(user_id:int):
 
 @log_errors
 async def send_message(channel_id:int,msg:str,*args, **kwargs):
-    print(f"Discord: Send {msg} in {channel_id}")
+    #print(f"Discord: Send {msg} in {channel_id}")
     channel = await get_channel(int(channel_id))
     return await channel.send(msg, *args, **kwargs, allowed_mentions=discord.AllowedMentions(everyone=True,users=False,roles=False,))
 

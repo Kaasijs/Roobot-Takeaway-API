@@ -49,8 +49,8 @@ services:
 ``docker compose up -d``
 
 # Access the API
-The API is available at:
-http://localhost:8000/docs#/default/create_order_order_post
+The API Demo is available at after installing:
+http://localhost:8000/docs#/default/
 
 # Config
 Please refure to ``/app/config/example-config``
