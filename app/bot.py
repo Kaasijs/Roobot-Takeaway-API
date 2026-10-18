@@ -81,9 +81,9 @@ async def order(order_id):
         try:
             #discord
             if discordbot != None:
-                await discordbot.send_message(order_id,f"Sucess! UWU\n tracking link: {tracking_link}")
+                await discordbot.send_message_via_order_id(order_id,f"Found! UWU\n tracking link: {tracking_link}, please contact API host if this link is wrong!")
         except:
-            await discordbot.send_message(order_id,f"Unable to get tracking link, please contact API host ;w;")
+            await discordbot.send_message_via_order_id(order_id,f"Unable to get tracking link, please contact API host ;w; (Timed out waiting for tracking mail)")
         
         if config["discord"]["order_compleet_timeout"] != 0:
             await asyncio.sleep(config["discord"]["order_compleet_timeout"])
@@ -232,10 +232,10 @@ class Automation:
             self.driver.wait_for_element_not_visible('pie-button[data-qa="item-choices-action-submit"]', timeout=20)
             await self.hint("Item added: " + str(item_name))
 
-            asyncio.sleep(1)
+            await asyncio.sleep(1)
             
             #This is a promotion popup
-            def refresh_if_free_item_modal_appears():
+            async def refresh_if_free_item_modal_appears():
                 try:
                     self.driver.find_element(
                         By.CSS_SELECTOR,
@@ -243,13 +243,13 @@ class Automation:
                     )
                     self.hint("WARN: Free-item modal detected! Please make sure order doesnt miss out on deals!\n-# Refreshing page...")
                     self.driver.refresh()
-                    asyncio.sleep(3)
+                    await asyncio.sleep(3)
                     return True
 
                 except NoSuchElementException:
                     return False
             
-            refresh_if_free_item_modal_appears()
+            await refresh_if_free_item_modal_appears()
 
         web_checkout = await self.find_element('pie-button[data-qa="sidebar-action-checkout"]')
         web_checkout.click()
@@ -423,7 +423,6 @@ class Automation:
             sender="no-reply@connect.thuisbezorgd.nl",
             subject=f"{username}, order confirmed",
             timeout=300,
-            inbox="Inbox",
         )["body"]
 
         import re
@@ -437,6 +436,8 @@ class Automation:
             )
             return match.group(0).rstrip(").,") if match else None
 
+        self.tracking_link = extract_tracking_link(email_body)
+        
         return extract_tracking_link(email_body)
 
 # ⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀

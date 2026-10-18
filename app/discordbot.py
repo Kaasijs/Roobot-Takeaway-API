@@ -137,12 +137,20 @@ async def get_username(user_id:int):
     return username
 
 @log_errors
-async def send_message(channel_id:int,msg:str,*args, **kwargs):
+async def send_message(channel_id:int, msg:str, *args, **kwargs):
     #print(f"Discord: Send {msg} in {channel_id}")
     channel = await get_channel(int(channel_id))
     return await channel.send(msg, *args, **kwargs, allowed_mentions=discord.AllowedMentions(everyone=True,users=False,roles=False,))
 
+@log_errors
+async def send_message_via_order_id(order_id:str, msg:str, *args, **kwargs):
+    print(f"Discord: Creating order {order_id} in {category_id}")
+    with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
+        order = json.load(f)
 
+    channel_id = order["discord"]["channel"]
+    await send_message(channel_id, msg, args, kwargs)
+    
 #region Orders
 @log_errors
 async def create_order(order_id:str):
