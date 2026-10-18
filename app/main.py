@@ -95,11 +95,18 @@ async def create_order(payload:OrderPayload):
                     "message": "Try again in a few sec, sorry qwq."
                 })
         
-        return HTTPException(status_code=status.HTTP_200_OK)
-        # await discordbot.remove_order(order_id)
+        if using_discord and config["discord"]["order_timeout"] != 0:
+                await asyncio.sleep(config["discord"]["order_timeout"])
+        else:
+            await asyncio.sleep(600)
+            
+        if using_discord:
+            await discordbot.remove_order(order_id)
         
-        # if os.path.exists(f"orders/{order_id}.json"):
-        #     os.remove(f"orders/{order_id}.json")
+        if os.path.exists(f"orders/{order_id}.json"):
+            os.remove(f"orders/{order_id}.json")
+    
+        return HTTPException(status_code=status.HTTP_200_OK)
     
     else:
         raise HTTPException(

@@ -143,13 +143,13 @@ async def send_message(channel_id:int, msg:str, *args, **kwargs):
     return await channel.send(msg, *args, **kwargs, allowed_mentions=discord.AllowedMentions(everyone=True,users=False,roles=False,))
 
 @log_errors
-async def send_message_via_order_id(order_id:str, msg:str, *args, **kwargs):
+async def send_message_via_order_id(order_id:str, msg:str):
     print(f"Discord: Creating order {order_id} in {category_id}")
     with open(f"orders/{order_id}.json", "r", encoding="utf-8") as f:
         order = json.load(f)
 
     channel_id = order["discord"]["channel"]
-    await send_message(channel_id, msg, args, kwargs)
+    await send_message(channel_id, msg)
     
 #region Orders
 @log_errors
@@ -272,7 +272,7 @@ async def send_payment_request(order_id:int, payment_link: str):
     address = order["user"]["address"]
     phone = order["user"]["phone"]
     
-    msg:str = f"[Payment needed!]]({payment_link})\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU"
+    msg:str = f"# Payment needed! [ideal](<{payment_link}>)\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU"
     
     view = RequestPaymentPrompt(order_id, channel_id, payment_link)
     await send_message(channel_id, msg=msg, view=view)

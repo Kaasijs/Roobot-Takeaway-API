@@ -81,12 +81,12 @@ async def order(order_id):
         try:
             #discord
             if discordbot != None:
-                await discordbot.send_message_via_order_id(order_id,f"Found! UWU\n tracking link: {tracking_link}, please contact API host if this link is wrong!")
+                await discordbot.send_message_via_order_id(order_id, msg=f"# Order Complete! UWU\n**tracking link**:\n{tracking_link}, please contact API host if this link is wrong!\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU")
         except:
-            await discordbot.send_message_via_order_id(order_id,f"Unable to get tracking link, please contact API host ;w; (Timed out waiting for tracking mail)")
+            await discordbot.send_message_via_order_id(order_id, msg=f"Unable to get tracking link, please contact API host ;w; (Timed out waiting for tracking mail)\n-# @here This bot was made by [Kaasijs](<https://github.com/Kaasijs>). UwU")
         
-        if config["discord"]["order_compleet_timeout"] != 0:
-            await asyncio.sleep(config["discord"]["order_compleet_timeout"])
+        if config["discord"]["order_timeout"] != 0:
+            await asyncio.sleep(config["discord"]["order_timeout"])
         else:
             await asyncio.sleep(9999999999999999999999999999999)
             
@@ -241,7 +241,7 @@ class Automation:
                         By.CSS_SELECTOR,
                         '[data-qa="free-item-modal"]'
                     )
-                    self.hint("WARN: Free-item modal detected! Please make sure order doesnt miss out on deals!\n-# Refreshing page...")
+                    await self.hint("WARN: Free-item modal detected! Please make sure order doesnt miss out on deals!\n-# Refreshing page...")
                     self.driver.refresh()
                     await asyncio.sleep(3)
                     return True
